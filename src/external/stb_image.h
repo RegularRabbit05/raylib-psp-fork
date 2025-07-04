@@ -367,6 +367,8 @@ RECENT REVISION HISTORY:
 //    default this is set to (1 << 24), which is 16777216, but that's still
 //    very big.
 
+#include <pspthreadman.h>
+
 #ifndef STBI_NO_STDIO
 #include <stdio.h>
 #endif // STBI_NO_STDIO
@@ -2960,7 +2962,12 @@ static int stbi__parse_entropy_coded_data(stbi__jpeg *z)
          // component has, independent of interleaved MCU blocking and such
          int w = (z->img_comp[n].x+7) >> 3;
          int h = (z->img_comp[n].y+7) >> 3;
+	 int sleepCooldown = 0;
          for (j=0; j < h; ++j) {
+	    if (sleepCooldown <= 0) {
+	       sceKernelDelayThreadCB(1);
+	       sleepCooldown = 100;
+	    } else sleepCooldown--;
             for (i=0; i < w; ++i) {
                int ha = z->img_comp[n].ha;
                if (!stbi__jpeg_decode_block(z, data, z->huff_dc+z->img_comp[n].hd, z->huff_ac+ha, z->fast_ac[ha], n, z->dequant[z->img_comp[n].tq])) return 0;
@@ -2977,10 +2984,15 @@ static int stbi__parse_entropy_coded_data(stbi__jpeg *z)
          }
          return 1;
       } else { // interleaved
+	 int sleepCooldown = 0;
          int i,j,k,x,y;
          STBI_SIMD_ALIGN(short, data[64]);
          for (j=0; j < z->img_mcu_y; ++j) {
             for (i=0; i < z->img_mcu_x; ++i) {
+               if (sleepCooldown <= 0) {
+	          sceKernelDelayThreadCB(1);
+	          sleepCooldown = 100;
+	       } else sleepCooldown--;
                // scan an interleaved mcu... process scan_n components in order
                for (k=0; k < z->scan_n; ++k) {
                   int n = z->order[k];
